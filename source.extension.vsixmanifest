@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="EasyColorPicker.02792255-b01b-4a13-a547-260c871e4e0f" Version="1.0" Language="en-US" Publisher="mobilepegas" />
+        <Identity Id="EasyColorPicker.02792255-b01b-4a13-a547-260c871e4e0f" Version="1.0" Language="en-US" Publisher="Vizzey" />
         <DisplayName>EasyColorPicker</DisplayName>
-        <Description>Empty VSIX Project.</Description>
+        <Description xml:space="preserve">Easy color picker for your projects. Just install it and all your hex/rgb colors will be recognized as colors.
+Click on square near your color to activate picker.</Description>
+        <Icon>logo.png</Icon>
+        <Tags>color picker, hex, color</Tags>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0)">

@@ -57,14 +57,10 @@ namespace EasyColorPicker
                 Margin = new Thickness(10)
             };
 
-            //
-            // 1) ВАЖНО: Сначала вычисляем HSV из исходного цвета
-            //
+           
             var (h, s, v) = RgbToHsv(initialColor.R, initialColor.G, initialColor.B);
 
-            //
-            // 2) Создаем компоненты
-            //
+           
             _colorSquare = new ColorGradientSquare
             {
                 Margin = new Thickness(0, 0, 10, 0)
@@ -73,16 +69,13 @@ namespace EasyColorPicker
             _hueBar = new VerticalHueBar
             {
                 Margin = new Thickness(0, 0, 10, 0),
-                Height = 200 // фиксированная высота для наглядности
+                Height = 200 
             };
 
-            // Добавляем панели
             root.Children.Add(_colorSquare);
             root.Children.Add(_hueBar);
 
-            //
-            // 3) Справа - панель со слайдерами и предпросмотром
-            //
+            
             var rightPanel = new StackPanel();
 
             bool initiallyHasAlpha = (format == ColorFormat.Hex8 || format == ColorFormat.Rgba);
@@ -94,7 +87,6 @@ namespace EasyColorPicker
             };
             rightPanel.Children.Add(_checkTransparency);
 
-            // Создаем слайдеры с исходными значениями R,G,B,A
             _sliderR = CreateSliderWithLabel("R:", initialColor.R, rightPanel);
             _sliderG = CreateSliderWithLabel("G:", initialColor.G, rightPanel);
             _sliderB = CreateSliderWithLabel("B:", initialColor.B, rightPanel);
@@ -114,56 +106,41 @@ namespace EasyColorPicker
             root.Children.Add(rightPanel);
             Content = root;
 
-            //
-            // 4) Инициализируем цветовые компоненты В ПРАВИЛЬНОМ ПОРЯДКЕ
-            // Но с подавлением событий, чтобы избежать циклических вызовов
-            //
+            
             _suppressEvents = true;
 
-            // Сначала устанавливаем Hue в панели оттенков
             _hueBar.SetHue(h, true);
 
-            // Перерисовываем панель оттенков
             _hueBar.RedrawHueBar();
 
-            // ВАЖНО: Сначала устанавливаем чистый цвет для базового оттенка h
             Color pureHueColor = HsvToColor(h, 1f, 1f);
             _colorSquare.BaseColor = pureHueColor;
 
-            // Только после установки базового цвета устанавливаем маркер
-            // на квадрате в соответствии с s,v
             _colorSquare.SetMarkerFromColor(initialColor, true);
 
-            // Настраиваем видимость альфа-канала
             UpdateAlphaVisibility();
 
             _suppressEvents = false;
 
-            // Настраиваем события после инициализации компонентов
             _checkTransparency.Checked += (_, __) => UpdateColor();
             _checkTransparency.Unchecked += (_, __) => UpdateColor();
 
-            // Определяем, когда ввод пользователя через HueBar влияет на квадрат
             _hueBar.HueChanged += hue =>
             {
                 if (_suppressEvents) return;
 
-                _suppressEvents = true; // Избегаем циклических вызовов
+                _suppressEvents = true; 
 
-                // Берём "чистый" цвет (s=1,v=1) для данного hue
                 Color c = HsvToColor(hue, 1f, 1f);
                 _colorSquare.BaseColor = c;
 
-                // Обновляем только цвет, не трогая слайдеры (это сделает RefreshSelectedColor)
                 _colorSquare.RefreshSelectedColor();
 
                 _suppressEvents = false;
 
-                // Обновляем слайдеры и интерфейс
                 UpdateColor(false);
             };
 
-            // Определяем, когда изменения в квадрате влияют на слайдеры
             _colorSquare.ColorChanged += squareColor =>
             {
                 if (_suppressEvents) return;
@@ -171,13 +148,12 @@ namespace EasyColorPicker
                 UpdateColor(false);
             };
 
-            // События слайдеров - важно использовать throttling для предотвращения частых обновлений
+            
             _sliderR.ValueChanged += (_, __) => { if (!_suppressEvents) UpdateFromSliders(); };
             _sliderG.ValueChanged += (_, __) => { if (!_suppressEvents) UpdateFromSliders(); };
             _sliderB.ValueChanged += (_, __) => { if (!_suppressEvents) UpdateFromSliders(); };
             _sliderA.ValueChanged += (_, __) => { if (!_suppressEvents) UpdateFromSliders(); };
 
-            // Финальное обновление цвета
             UpdateColor();
         }
 
@@ -247,46 +223,37 @@ namespace EasyColorPicker
 
             if (fromSliders)
             {
-                // Получаем значения из слайдеров
                 r = (byte)_sliderR.Value;
                 g = (byte)_sliderG.Value;
                 b = (byte)_sliderB.Value;
                 a = useAlpha ? (byte)_sliderA.Value : (byte)255;
 
-                // Обновляем положение маркера в соответствии с новым цветом
                 var (h, s, v) = RgbToHsv(r, g, b);
 
-                // Устанавливаем положение hue-бара без вызова события
                 _hueBar.SetHue(h, true);
 
-                // Обновляем BaseColor квадрата  
                 Color pureColor = HsvToColor(h, 1f, 1f);
                 _colorSquare.BaseColor = pureColor;
 
-                // Обновляем маркер на квадрате
                 Color sliderColor = Color.FromArgb(a, r, g, b);
                 _colorSquare.SetMarkerFromColor(sliderColor, true);
             }
             else
             {
-                // Получаем цвет из квадрата, если метод вызван из-за изменений в квадрате или hue-баре
                 Color squareColor = _colorSquare.SelectedColor;
                 r = squareColor.R;
                 g = squareColor.G;
                 b = squareColor.B;
                 a = useAlpha ? (byte)_sliderA.Value : (byte)255;
 
-                // Обновляем слайдеры из цвета квадрата
                 _sliderR.Value = r;
                 _sliderG.Value = g;
                 _sliderB.Value = b;
             }
 
-            // Всегда обновляем превью и текстовый буфер
             var currentColor = Color.FromArgb(a, r, g, b);
             _preview.Background = new SolidColorBrush(currentColor);
 
-            // Подстановка в текстовый буфер, если нужно:
             string replacement = BuildColorString(r, g, b, a, useAlpha);
             var snap = _buffer.CurrentSnapshot;
             var replaceSpan = _trackingSpan.GetSpan(snap);
@@ -351,7 +318,6 @@ namespace EasyColorPicker
             }
         }
 
-        // -- Функция для перевода Hue, Saturation, Value -> Color
         private Color HsvToColor(float hue, float s, float v)
         {
             float c = s * v;
@@ -377,7 +343,6 @@ namespace EasyColorPicker
                 (byte)(255 * b));
         }
 
-        // -- Функция для перевода Color(R,G,B) -> (h,s,v)
         private (float h, float s, float v) RgbToHsv(byte r, byte g, byte b)
         {
             float rf = r / 255f;
@@ -391,7 +356,7 @@ namespace EasyColorPicker
             float h;
             if (Math.Abs(delta) < 0.00001f)
             {
-                h = 0; // hue не определён, пусть будет 0
+                h = 0;
             }
             else if (Math.Abs(max - rf) < 0.00001f)
             {

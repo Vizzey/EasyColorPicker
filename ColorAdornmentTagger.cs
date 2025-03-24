@@ -17,8 +17,7 @@ namespace EasyColorPicker
     {
         private readonly ITextBuffer _buffer;
 
-        // Строгая регулярка: #abc / #aabbcc / #aabbccdd (без лишних символов),
-        // а также rgb(...)/rgba(...).
+   
         private static readonly Regex _colorRegex = new Regex(
             @"#[0-9A-Fa-f]{3}(?![0-9A-Fa-f])" +     // #abc
             @"|#[0-9A-Fa-f]{6}(?![0-9A-Fa-f])" +     // #aabbcc
@@ -61,7 +60,6 @@ namespace EasyColorPicker
 
                 var color = parsedColor.Value;
 
-                // Квадратик-адорнмент
                 var insertPosition = new SnapshotSpan(snapshot, match.Index, 0);
                 var square = new Border
                 {
@@ -74,10 +72,8 @@ namespace EasyColorPicker
                     Cursor = Cursors.Hand
                 };
 
-                // При клике открываем ColorPickerWindow
                 square.MouseLeftButtonDown += (s, e) =>
                 {
-                    // Позиция мыши
                     Point mousePosDip = Mouse.GetPosition(null);
 
                     var pickerWindow = new ColorPickerWindow(color, format, _buffer, trackingSpan)

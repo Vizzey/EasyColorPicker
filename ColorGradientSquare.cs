@@ -32,8 +32,6 @@ namespace EasyColorPicker
                 _baseColor = value;
                 RedrawGradient();
 
-                // Вместо полного обновления позиции маркера, сохраняем текущую
-                // позицию и обновляем только цвет
                 RefreshSelectedColor();
             }
         }
@@ -59,8 +57,8 @@ namespace EasyColorPicker
                 StrokeThickness = 2,
                 Fill = Brushes.Transparent
             };
-            SetLeft(_marker, SIZE / 2 - 5); // Устанавливаем начальную позицию в центр
-            SetTop(_marker, SIZE / 2 - 5);  // вместо (-5,-5), что за пределами канваса
+            SetLeft(_marker, SIZE / 2 - 5);
+            SetTop(_marker, SIZE / 2 - 5); 
             Children.Add(_marker);
 
             MouseLeftButtonDown += OnMouseLeftButtonDown;
@@ -68,10 +66,8 @@ namespace EasyColorPicker
             MouseLeftButtonUp += OnMouseLeftButtonUp;
             MouseLeave += (_, __) => _isMouseDown = false;
 
-            // Нарисуем градиент при инициализации (по умолчанию _baseColor=Red)
             RedrawGradient();
 
-            // Инициализация SelectedColor на основе начальной позиции маркера
             RefreshSelectedColor();
         }
 
@@ -126,8 +122,7 @@ namespace EasyColorPicker
                 {
                     double u = i / (double)(SIZE - 1);
 
-                    // Линейная интерполяция от White (R=255,G=255,B=255) к BaseColor
-                    // по оси X, затем умножаем на (1 - v), чтобы затемнять по оси Y.
+              
                     double r1 = (1 - u) * 255 + (u) * BaseColor.R;
                     double g1 = (1 - u) * 255 + (u) * BaseColor.G;
                     double b1 = (1 - u) * 255 + (u) * BaseColor.B;
@@ -180,7 +175,6 @@ namespace EasyColorPicker
 
         public void RefreshSelectedColor()
         {
-            // Восстанавливаем x,y из маркера
             double mx = GetLeft(_marker) + _marker.Width / 2.0;
             double my = GetTop(_marker) + _marker.Height / 2.0;
 
@@ -200,10 +194,8 @@ namespace EasyColorPicker
         {
             _suppressEvents = suppressEvents;
 
-            // Используем прямое вычисление позиции, основанное на HSV
             var (h, s, v) = RgbToHsv(c.R, c.G, c.B);
 
-            // Вычисляем позицию маркера на основе s,v (не hue, он задается в BaseColor)
             double x = s * (SIZE - 1);
             double y = (1 - v) * (SIZE - 1);
 
@@ -219,7 +211,6 @@ namespace EasyColorPicker
             return a.R == b.R && a.G == b.G && a.B == b.B && a.A == b.A;
         }
 
-        // Вспомогательные методы для конвертации цветов
         private (float h, float s, float v) RgbToHsv(byte r, byte g, byte b)
         {
             float rf = r / 255f;
@@ -233,7 +224,7 @@ namespace EasyColorPicker
             float h;
             if (Math.Abs(delta) < 0.00001f)
             {
-                h = 0; // hue не определён, пусть будет 0
+                h = 0;
             }
             else if (Math.Abs(max - rf) < 0.00001f)
             {
@@ -255,29 +246,6 @@ namespace EasyColorPicker
             return (h, s, v);
         }
 
-        private Color HsvToColor(float hue, float s, float v)
-        {
-            float c = s * v;
-            float hh = hue / 60f;
-            float x = c * (1f - Math.Abs(hh % 2f - 1f));
-
-            float r1, g1, b1;
-            if (hh < 1) { r1 = c; g1 = x; b1 = 0; }
-            else if (hh < 2) { r1 = x; g1 = c; b1 = 0; }
-            else if (hh < 3) { r1 = 0; g1 = c; b1 = x; }
-            else if (hh < 4) { r1 = 0; g1 = x; b1 = c; }
-            else if (hh < 5) { r1 = x; g1 = 0; b1 = c; }
-            else { r1 = c; g1 = 0; b1 = x; }
-
-            float m = v - c;
-            float rr = r1 + m;
-            float gg = g1 + m;
-            float bb = b1 + m;
-
-            return Color.FromArgb(255,
-                (byte)(255f * rr),
-                (byte)(255f * gg),
-                (byte)(255f * bb));
-        }
+      
     }
 }

@@ -30,15 +30,12 @@ namespace EasyColorPicker
         {
             Width = BAR_WIDTH;
 
-            // Вызовем перерисовку, когда элемент загружен/изменён размер:
             Loaded += (s, e) => RedrawHueBar();
             SizeChanged += (s, e) => RedrawHueBar();
 
-            // Картинка-градиент (ширина = BAR_WIDTH)
             _image = new Image { Width = BAR_WIDTH, Stretch = Stretch.Fill };
             Children.Add(_image);
 
-            // Маркер: чуть шире, чем сама полоса, 1px высотой
             _marker = new Rectangle
             {
                 Width = BAR_WIDTH * 1.25,
@@ -67,7 +64,7 @@ namespace EasyColorPicker
             int h = (int)ActualHeight;
             int w = (int)Width;
 
-            // Создаем WriteableBitmap только один раз и кешируем
+            
             if (_image.Source == null || ((WriteableBitmap)_image.Source).PixelHeight != h)
             {
                 var wb = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
@@ -95,7 +92,6 @@ namespace EasyColorPicker
                 _image.Height = h;
             }
 
-            // Переставим маркер в соответствии с текущим Hue
             SetMarkerToHue(Hue);
         }
 
@@ -106,7 +102,6 @@ namespace EasyColorPicker
             if (hue > 360) hue = 360;
             Hue = hue;
 
-            // Сразу двигаем маркер
             SetMarkerToHue(Hue);
             _suppressEvents = false;
         }
