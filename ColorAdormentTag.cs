@@ -4,6 +4,16 @@ using Microsoft.VisualStudio.Text.Editor;
 
 namespace EasyColorPicker
 {
+    internal enum ColorFormat
+    {
+        Hex3,
+        Hex6,
+        Hex8,
+        Rgb,
+        Rgba,
+        Unknown
+    }
+
     internal class ColorAdornmentTag : IntraTextAdornmentTag
     {
         public ColorAdornmentTag(UIElement adornment, AdornmentRemovedCallback removedCallback)
