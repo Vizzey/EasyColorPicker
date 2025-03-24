@@ -15,6 +15,7 @@ namespace EasyColorPicker
         private Image _image;
         private Rectangle _marker;
         private bool _isMouseDown;
+        private bool _suppressEvents;
 
         private float _hue;
         public float Hue
@@ -66,42 +67,48 @@ namespace EasyColorPicker
             int h = (int)ActualHeight;
             int w = (int)Width;
 
-            var wb = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
-            byte[] pixels = new byte[w * h * 4];
-            int stride = w * 4;
-
-            int offset = 0;
-            for (int y = 0; y < h; y++)
+            // Создаем WriteableBitmap только один раз и кешируем
+            if (_image.Source == null || ((WriteableBitmap)_image.Source).PixelHeight != h)
             {
-                float hueVal = (float)(y / (double)(h - 1) * 360.0f);
-                Color c = HsvToColor(hueVal, 1f, 1f);
+                var wb = new WriteableBitmap(w, h, 96, 96, PixelFormats.Pbgra32, null);
+                byte[] pixels = new byte[w * h * 4];
+                int stride = w * 4;
 
-                for (int x = 0; x < w; x++)
+                int offset = 0;
+                for (int y = 0; y < h; y++)
                 {
-                    pixels[offset + 0] = c.B;
-                    pixels[offset + 1] = c.G;
-                    pixels[offset + 2] = c.R;
-                    pixels[offset + 3] = 255;
-                    offset += 4;
-                }
-            }
+                    float hueVal = (float)(y / (double)(h - 1) * 360.0f);
+                    Color c = HsvToColor(hueVal, 1f, 1f);
 
-            wb.WritePixels(new Int32Rect(0, 0, w, h), pixels, stride, 0);
-            _image.Source = wb;
-            _image.Height = h;
+                    for (int x = 0; x < w; x++)
+                    {
+                        pixels[offset + 0] = c.B;
+                        pixels[offset + 1] = c.G;
+                        pixels[offset + 2] = c.R;
+                        pixels[offset + 3] = 255;
+                        offset += 4;
+                    }
+                }
+
+                wb.WritePixels(new Int32Rect(0, 0, w, h), pixels, stride, 0);
+                _image.Source = wb;
+                _image.Height = h;
+            }
 
             // Переставим маркер в соответствии с текущим Hue
             SetMarkerToHue(Hue);
         }
 
-        public void SetHue(float hue)
+        public void SetHue(float hue, bool suppressEvents = false)
         {
+            _suppressEvents = suppressEvents;
             if (hue < 0) hue = 0;
             if (hue > 360) hue = 360;
             Hue = hue;
 
             // Сразу двигаем маркер
             SetMarkerToHue(Hue);
+            _suppressEvents = false;
         }
 
         private void SetMarkerToHue(float hue)
@@ -144,7 +151,10 @@ namespace EasyColorPicker
             if (newHue > 360) newHue = 360;
             Hue = newHue;
 
-            HueChanged?.Invoke(Hue);
+            if (!_suppressEvents)
+            {
+                HueChanged?.Invoke(Hue);
+            }
         }
 
         private Color HsvToColor(float hue, float s, float v)

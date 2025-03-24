@@ -14,6 +14,8 @@ namespace EasyColorPicker
         private Image _image;
         private Ellipse _marker;
         private bool _isMouseDown;
+        private bool _suppressEvents;
+        private WriteableBitmap _cachedBitmap;
 
         public event Action<Color> ColorChanged;
 
@@ -25,6 +27,8 @@ namespace EasyColorPicker
             get => _baseColor;
             set
             {
+                if (ColorsEqual(_baseColor, value)) return;
+
                 _baseColor = value;
                 RedrawGradient();
 
@@ -101,12 +105,16 @@ namespace EasyColorPicker
             SetTop(_marker, y - _marker.Height / 2.0);
 
             SelectedColor = GetColorAtPosition(x, y);
-            ColorChanged?.Invoke(SelectedColor);
+
+            if (!_suppressEvents)
+            {
+                ColorChanged?.Invoke(SelectedColor);
+            }
         }
 
         public void RedrawGradient()
         {
-            var wb = new WriteableBitmap(SIZE, SIZE, 96, 96, PixelFormats.Pbgra32, null);
+            _cachedBitmap = new WriteableBitmap(SIZE, SIZE, 96, 96, PixelFormats.Pbgra32, null);
             byte[] pixels = new byte[SIZE * SIZE * 4];
             int stride = SIZE * 4;
             int offset = 0;
@@ -137,8 +145,8 @@ namespace EasyColorPicker
                 }
             }
 
-            wb.WritePixels(new Int32Rect(0, 0, SIZE, SIZE), pixels, stride, 0);
-            _image.Source = wb;
+            _cachedBitmap.WritePixels(new Int32Rect(0, 0, SIZE, SIZE), pixels, stride, 0);
+            _image.Source = _cachedBitmap;
         }
 
         private Color GetColorAtPosition(double x, double y)
@@ -177,20 +185,23 @@ namespace EasyColorPicker
             double my = GetTop(_marker) + _marker.Height / 2.0;
 
             SelectedColor = GetColorAtPosition(mx, my);
-            ColorChanged?.Invoke(SelectedColor);
+
+            if (!_suppressEvents)
+            {
+                ColorChanged?.Invoke(SelectedColor);
+            }
         }
 
         /// <summary>
         /// Улучшенный метод для установки маркера по цвету. Работает по HSV модели
         /// для более точного позиционирования.
         /// </summary>
-        public void SetMarkerFromColor(Color c)
+        public void SetMarkerFromColor(Color c, bool suppressEvents = false)
         {
+            _suppressEvents = suppressEvents;
+
             // Используем прямое вычисление позиции, основанное на HSV
             var (h, s, v) = RgbToHsv(c.R, c.G, c.B);
-
-            // Проверяем, совпадает ли наш текущий BaseColor с оттенком цвета c
-            Color pureBaseColorForHue = HsvToColor(h, 1, 1);
 
             // Вычисляем позицию маркера на основе s,v (не hue, он задается в BaseColor)
             double x = s * (SIZE - 1);
@@ -199,6 +210,13 @@ namespace EasyColorPicker
             SetLeft(_marker, x - _marker.Width / 2);
             SetTop(_marker, y - _marker.Height / 2);
             SelectedColor = c;
+
+            _suppressEvents = false;
+        }
+
+        private bool ColorsEqual(Color a, Color b)
+        {
+            return a.R == b.R && a.G == b.G && a.B == b.B && a.A == b.A;
         }
 
         // Вспомогательные методы для конвертации цветов
