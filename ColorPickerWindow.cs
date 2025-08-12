@@ -25,14 +25,18 @@ namespace EasyColorPicker
         private bool _suppressEvents;
         private bool _updating;
 
+        private readonly string _funcToken;
+
         public ColorPickerWindow(Color initialColor,
                                  ColorFormat format,
                                  ITextBuffer buffer,
-                                 ITrackingSpan trackingSpan)
+                                 ITrackingSpan trackingSpan,
+                                 string functionToken = null)
         {
             _buffer = buffer;
             _trackingSpan = trackingSpan;
             _colorFormat = format;
+            _funcToken = functionToken;
 
             Loaded += (sa, e) =>
             {
@@ -79,18 +83,27 @@ namespace EasyColorPicker
             var rightPanel = new StackPanel();
 
             bool initiallyHasAlpha = (format == ColorFormat.Hex8 || format == ColorFormat.Rgba);
+            
+            
             _checkTransparency = new CheckBox
             {
                 Content = "Transparent Channel",
                 IsChecked = initiallyHasAlpha,
                 Margin = new Thickness(0, 0, 0, 10)
             };
+           
             rightPanel.Children.Add(_checkTransparency);
 
             _sliderR = CreateSliderWithLabel("R:", initialColor.R, rightPanel);
             _sliderG = CreateSliderWithLabel("G:", initialColor.G, rightPanel);
             _sliderB = CreateSliderWithLabel("B:", initialColor.B, rightPanel);
             _sliderA = CreateSliderWithLabel("A:", initialColor.A, rightPanel);
+
+            _checkTransparency.IsEnabled = true;
+            if (format == ColorFormat.WinRgb)
+            {
+                _checkTransparency.IsChecked = false;
+            }
 
             _preview = new Border
             {
@@ -274,49 +287,82 @@ namespace EasyColorPicker
             return a.R == b.R && a.G == b.G && a.B == b.B && a.A == b.A;
         }
 
+        private static bool IsAllUpper(string s) => !string.IsNullOrEmpty(s) && s == s.ToUpperInvariant();
+        private static bool IsAllLower(string s) => !string.IsNullOrEmpty(s) && s == s.ToLowerInvariant();
+
+        private static string MakeRgbToken(string token)
+        {
+            if (string.IsNullOrEmpty(token)) return "rgb";
+            string base3 = token.StartsWith("rgba", StringComparison.OrdinalIgnoreCase)
+                ? token.Substring(0, 3)
+                : token.StartsWith("rgb", StringComparison.OrdinalIgnoreCase)
+                    ? token.Substring(0, 3)
+                    : "rgb";
+
+            if (IsAllUpper(token)) return base3.ToUpperInvariant();   // RGB
+            if (IsAllLower(token)) return base3.ToLowerInvariant();   // rgb
+            return base3;                                             // смешанный — как есть первые 3
+        }
+
+        private static string MakeRgbaToken(string token)
+        {
+            if (string.IsNullOrEmpty(token)) return "rgba";
+            if (token.StartsWith("rgba", StringComparison.OrdinalIgnoreCase))
+                return IsAllUpper(token) ? "RGBA" : IsAllLower(token) ? "rgba" : token; // уже rgba — вернём как было
+
+            string rgb3 = MakeRgbToken(token);
+            if (IsAllUpper(token)) return rgb3.ToUpperInvariant() + "A"; // RGB -> RGBA
+            if (IsAllLower(token)) return rgb3.ToLowerInvariant() + "a"; // rgb -> rgba
+            return rgb3 + "a";                                           // смешанный
+        }
+
         private void UpdateAlphaVisibility()
         {
+            if (_sliderA == null) return;
             bool useAlpha = (_checkTransparency.IsChecked == true);
             _sliderA.Visibility = useAlpha ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private string BuildColorString(byte r, byte g, byte b, byte a, bool useAlpha)
         {
-            double alpha01 = Math.Round(a / 255.0, 2);
+            double alpha01 = Math.Round(a / 255.0, 2, MidpointRounding.AwayFromZero);
+
+            string rgbTok = MakeRgbToken(_funcToken);
+            string rgbaTok = MakeRgbaToken(_funcToken);
 
             switch (_colorFormat)
             {
-                case ColorFormat.Hex3:
-                    if (useAlpha)
-                        return $"rgba({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})";
-                    else
-                        return $"#{r:X2}{g:X2}{b:X2}";
+                case ColorFormat.WinRgb:
+                    // Не ломаем WinAPI-макрос: всегда RGB без альфы,
+                    // чекбокс визуально кликабельный, но на вывод не влияет.
+                    return useAlpha
+                       ? $"{rgbaTok}({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})"
+                       : $"{rgbTok}({r}, {g}, {b})";
 
+                case ColorFormat.Hex3:
                 case ColorFormat.Hex6:
-                    if (useAlpha)
-                        return $"rgba({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})";
-                    else
-                        return $"#{r:X2}{g:X2}{b:X2}";
+                    return useAlpha
+                        ? $"{rgbaTok}({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})"
+                        : $"#{r:X2}{g:X2}{b:X2}";
 
                 case ColorFormat.Hex8:
-                    return $"rgba({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})";
+                    return $"{rgbaTok}({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})";
 
                 case ColorFormat.Rgb:
-                    if (useAlpha)
-                        return $"rgba({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})";
-                    else
-                        return $"rgb({r}, {g}, {b})";
+                    return useAlpha
+                        ? $"{rgbaTok}({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})"
+                        : $"{rgbTok}({r}, {g}, {b})";
 
                 case ColorFormat.Rgba:
-                    if (!useAlpha)
-                        return $"rgb({r}, {g}, {b})";
-                    else
-                        return $"rgba({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})";
+                    return useAlpha
+                        ? $"{rgbaTok}({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})"
+                        : $"{rgbTok}({r}, {g}, {b})";
 
                 default:
-                    return $"rgba({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})";
+                    return $"{rgbaTok}({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})";
             }
         }
+
 
         private Color HsvToColor(float hue, float s, float v)
         {

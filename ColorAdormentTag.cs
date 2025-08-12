@@ -11,6 +11,7 @@ namespace EasyColorPicker
         Hex8,
         Rgb,
         Rgba,
+        WinRgb,
         Unknown
     }
 

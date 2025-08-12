@@ -1,3 +1,13 @@
 bin
 .vs
 obj
+cert.crt
+cert.csr
+cert.pfx
+certgen.bat
+easycolorpicker.mp4
+easycolorpicker.pfx
+EasyColorPicker.vsix
+ezgif-1c9b4c1d97bc5f.gif
+private.key
+VizzeysKey.pfx

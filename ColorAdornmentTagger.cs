@@ -17,13 +17,14 @@ namespace EasyColorPicker
     {
         private readonly ITextBuffer _buffer;
 
-   
+
         private static readonly Regex _colorRegex = new Regex(
-            @"#[0-9A-Fa-f]{3}(?![0-9A-Fa-f])" +     // #abc
-            @"|#[0-9A-Fa-f]{6}(?![0-9A-Fa-f])" +     // #aabbcc
-            @"|#[0-9A-Fa-f]{8}(?![0-9A-Fa-f])" +     // #aabbccdd
-            @"|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:\d*\.?\d+))?\s*\)",
-            RegexOptions.Compiled);
+             @"#[0-9A-Fa-f]{3}(?![0-9A-Fa-f])" +                 // #abc
+             @"|#[0-9A-Fa-f]{6}(?![0-9A-Fa-f])" +               // #aabbcc
+             @"|#[0-9A-Fa-f]{8}(?![0-9A-Fa-f])" +               // #aabbccdd
+             @"|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*\d*\.?\d+)?\s*\)" + // rgb/rgba(...)
+             @"|RGB\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)",                        // WinAPI RGB(...)
+             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
@@ -76,7 +77,9 @@ namespace EasyColorPicker
                 {
                     Point mousePosDip = Mouse.GetPosition(null);
 
-                    var pickerWindow = new ColorPickerWindow(color, format, _buffer, trackingSpan)
+                    string funcToken = ExtractFunctionToken(original);
+
+                    var pickerWindow = new ColorPickerWindow(color, format, _buffer, trackingSpan, funcToken)
                     {
                         WindowStartupLocation = WindowStartupLocation.Manual,
                         Left = mousePosDip.X,
@@ -93,6 +96,22 @@ namespace EasyColorPicker
             }
         }
 
+        private static string ExtractFunctionToken(string original)
+        {
+            int p = original.IndexOf('(');
+            if (p > 0)
+            {
+                var t = original.Substring(0, p);
+                // сохраняем как есть: rgb / rgba / RGB / RGBA / смешанный регистр
+                if (t.Equals("rgb", StringComparison.OrdinalIgnoreCase) ||
+                    t.Equals("rgba", StringComparison.OrdinalIgnoreCase) ||
+                    t.Equals("RGB", StringComparison.Ordinal) ||
+                    t.Equals("RGBA", StringComparison.Ordinal))
+                    return t;
+            }
+            return null;
+        }
+
         /// <summary>
         /// Определяем формат: #abc, #aabbcc, #aabbccdd, rgb(...), rgba(...).
         /// Иначе Unknown.
@@ -106,6 +125,8 @@ namespace EasyColorPicker
                 if (original.Length == 9) return ColorFormat.Hex8; // #aabbccdd
                 return ColorFormat.Unknown;
             }
+            if (original.StartsWith("RGB(", StringComparison.Ordinal))
+                return ColorFormat.WinRgb;
             if (original.StartsWith("rgba", StringComparison.OrdinalIgnoreCase))
                 return ColorFormat.Rgba;
             if (original.StartsWith("rgb", StringComparison.OrdinalIgnoreCase))
