@@ -12,6 +12,7 @@ namespace EasyColorPicker
         Rgb,
         Rgba,
         WinRgb,
+        UnityColor,
         Unknown
     }
 
