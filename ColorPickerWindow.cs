@@ -70,10 +70,10 @@ namespace EasyColorPicker
                 Margin = new Thickness(10)
             };
 
-           
+
             var (h, s, v) = RgbToHsv(initialColor.R, initialColor.G, initialColor.B);
 
-           
+
             _colorSquare = new ColorGradientSquare
             {
                 Margin = new Thickness(0, 0, 10, 0)
@@ -82,25 +82,26 @@ namespace EasyColorPicker
             _hueBar = new VerticalHueBar
             {
                 Margin = new Thickness(0, 0, 10, 0),
-                Height = 200 
+                Height = 200
             };
 
             root.Children.Add(_colorSquare);
             root.Children.Add(_hueBar);
 
-            
+
             var rightPanel = new StackPanel();
 
-            bool initiallyHasAlpha = (format == ColorFormat.Hex8 || format == ColorFormat.Rgba);
-            
-            
+            bool initiallyHasAlpha =
+                (format == ColorFormat.Hex8 || format == ColorFormat.Rgba) ||
+                (format == ColorFormat.UnityColor && string.Equals(_funcToken, "UNITY4", StringComparison.Ordinal));
+
             _checkTransparency = new CheckBox
             {
                 Content = "Transparent Channel",
                 IsChecked = initiallyHasAlpha,
                 Margin = new Thickness(0, 0, 0, 10)
             };
-           
+
             rightPanel.Children.Add(_checkTransparency);
 
             _sliderR = CreateSliderWithLabel("R:", initialColor.R, rightPanel);
@@ -128,7 +129,7 @@ namespace EasyColorPicker
             root.Children.Add(rightPanel);
             Content = root;
 
-            
+
             _suppressEvents = true;
 
             _hueBar.SetHue(h, true);
@@ -151,7 +152,7 @@ namespace EasyColorPicker
             {
                 if (_suppressEvents) return;
 
-                _suppressEvents = true; 
+                _suppressEvents = true;
 
                 Color c = HsvToColor(hue, 1f, 1f);
                 _colorSquare.BaseColor = c;
@@ -170,7 +171,7 @@ namespace EasyColorPicker
                 UpdateColor(false);
             };
 
-            
+
             _sliderR.ValueChanged += (_, __) => { if (!_suppressEvents) UpdateFromSliders(); };
             _sliderG.ValueChanged += (_, __) => { if (!_suppressEvents) UpdateFromSliders(); };
             _sliderB.ValueChanged += (_, __) => { if (!_suppressEvents) UpdateFromSliders(); };
@@ -377,6 +378,14 @@ namespace EasyColorPicker
                     return useAlpha
                         ? $"{rgbaTok}({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})"
                         : $"{rgbTok}({r}, {g}, {b})";
+
+                case ColorFormat.UnityColor:
+                    Func<byte, string> b2f = v =>
+                        Math.Round(v / 255.0, 2, MidpointRounding.AwayFromZero)
+                            .ToString(CultureInfo.InvariantCulture) + "f";
+                    return useAlpha
+                        ? $"new Color({b2f(r)}, {b2f(g)}, {b2f(b)}, {b2f(a)})"
+                        : $"new Color({b2f(r)}, {b2f(g)}, {b2f(b)})";
 
                 default:
                     return $"{rgbaTok}({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})";

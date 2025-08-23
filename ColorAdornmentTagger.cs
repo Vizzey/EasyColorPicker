@@ -24,7 +24,8 @@ namespace EasyColorPicker
              @"|#[0-9A-Fa-f]{6}(?![0-9A-Fa-f])" +               // #aabbcc
              @"|#[0-9A-Fa-f]{8}(?![0-9A-Fa-f])" +               // #aabbccdd
              @"|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*\d*\.?\d+)?\s*\)" + // rgb/rgba(...)
-             @"|RGB\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)",                        // WinAPI RGB(...)
+             @"|RGB\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)" +                        // WinAPI RGB(...)
+             @"|new\s+(?:UnityEngine\.)?Color\s*\(\s*(?:[+-]?\d*\.?\d+f?\s*(?:,\s*[+-]?\d*\.?\d+f?\s*){2,3})?\)",
              RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
@@ -112,6 +113,13 @@ namespace EasyColorPicker
                     t.Equals("RGB", StringComparison.Ordinal) ||
                     t.Equals("RGBA", StringComparison.Ordinal))
                     return t;
+
+                if (Regex.IsMatch(original, @"^\s*new\s+(?:UnityEngine\.)?Color\s*\(", RegexOptions.IgnoreCase))
+                {
+                    var nums = Regex.Matches(original, @"[+-]?\d*\.?\d+f?", RegexOptions.IgnoreCase);
+                    if (nums.Count == 0) return "UNITY0";
+                    return nums.Count >= 4 ? "UNITY4" : "UNITY3";
+                }
             }
             return null;
         }
@@ -129,6 +137,9 @@ namespace EasyColorPicker
                 if (original.Length == 9) return ColorFormat.Hex8; // #aabbccdd
                 return ColorFormat.Unknown;
             }
+
+            if (Regex.IsMatch(original, @"^\s*new\s+(?:UnityEngine\.)?Color\s*\(", RegexOptions.IgnoreCase))
+                return ColorFormat.UnityColor;
             if (original.StartsWith("RGB(", StringComparison.Ordinal))
                 return ColorFormat.WinRgb;
             if (original.StartsWith("rgba", StringComparison.OrdinalIgnoreCase))
@@ -186,6 +197,34 @@ namespace EasyColorPicker
                     return Color.FromArgb(a, r, g, b);
                 }
             }
+            else if (Regex.IsMatch(value, @"^\s*new\s+(?:UnityEngine\.)?Color\s*\(", RegexOptions.IgnoreCase))
+            {
+                var parts = Regex.Matches(value, @"[+-]?\d*\.?\d+f?", RegexOptions.IgnoreCase);
+                if (parts.Count == 0)
+                {
+                    return Color.FromArgb(0, 0, 0, 0);
+                }
+                if (parts.Count >= 3)
+                {
+                    Func<string, double> to01 = s =>
+                    {
+                        var v = s.EndsWith("f", StringComparison.OrdinalIgnoreCase) ? s.Substring(0, s.Length - 1) : s;
+                        double d = double.Parse(v, CultureInfo.InvariantCulture);
+                        if (d < 0) d = 0; if (d > 1) d = 1;
+                        return d;
+                    };
+                    double rf = to01(parts[0].Value);
+                    double gf = to01(parts[1].Value);
+                    double bf = to01(parts[2].Value);
+                    double af = (parts.Count >= 4) ? to01(parts[3].Value) : 1.0;
+                    return Color.FromArgb(
+                        (byte)Math.Round(af * 255),
+                        (byte)Math.Round(rf * 255),
+                        (byte)Math.Round(gf * 255),
+                        (byte)Math.Round(bf * 255));
+                }
+            }
+
             return null;
         }
     }
