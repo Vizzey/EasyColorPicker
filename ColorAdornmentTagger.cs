@@ -9,6 +9,7 @@ using System.Windows.Media;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Adornments;
 using Microsoft.VisualStudio.Text.Editor;
+using Microsoft.VisualStudio.Text.Operations;
 using Microsoft.VisualStudio.Text.Tagging;
 
 namespace EasyColorPicker
@@ -16,7 +17,7 @@ namespace EasyColorPicker
     internal sealed class ColorAdornmentTagger : ITagger<IntraTextAdornmentTag>
     {
         private readonly ITextBuffer _buffer;
-
+        private readonly ITextUndoHistoryRegistry _undoHistoryRegistry;
 
         private static readonly Regex _colorRegex = new Regex(
              @"#[0-9A-Fa-f]{3}(?![0-9A-Fa-f])" +                 // #abc
@@ -28,9 +29,10 @@ namespace EasyColorPicker
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
 
-        public ColorAdornmentTagger(ITextBuffer buffer)
+        public ColorAdornmentTagger(ITextBuffer buffer, ITextUndoHistoryRegistry undoHistoryRegistry)
         {
             _buffer = buffer;
+            _undoHistoryRegistry = undoHistoryRegistry ?? throw new ArgumentNullException(nameof(undoHistoryRegistry));
             _buffer.Changed += OnBufferChanged;
         }
 
@@ -76,10 +78,12 @@ namespace EasyColorPicker
                 square.MouseLeftButtonDown += (s, e) =>
                 {
                     Point mousePosDip = Mouse.GetPosition(null);
-
                     string funcToken = ExtractFunctionToken(original);
 
-                    var pickerWindow = new ColorPickerWindow(color, format, _buffer, trackingSpan, funcToken)
+                    ITextUndoHistory history = _undoHistoryRegistry.GetHistory(_buffer)
+                        ?? _undoHistoryRegistry.RegisterHistory(_buffer);
+
+                    var pickerWindow = new ColorPickerWindow(color, format, _buffer, trackingSpan, funcToken, history)
                     {
                         WindowStartupLocation = WindowStartupLocation.Manual,
                         Left = mousePosDip.X,

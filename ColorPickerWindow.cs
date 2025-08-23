@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.VisualStudio.Text;
+using Microsoft.VisualStudio.Text.Operations;
 
 namespace EasyColorPicker
 {
@@ -13,6 +14,8 @@ namespace EasyColorPicker
         private readonly ITextBuffer _buffer;
         private readonly ITrackingSpan _trackingSpan;
         private readonly ColorFormat _colorFormat;
+        private readonly ITextUndoHistory _undoHistory;
+        private ITextUndoTransaction _undoTx;
 
         private ColorGradientSquare _colorSquare;
         private VerticalHueBar _hueBar;
@@ -31,12 +34,18 @@ namespace EasyColorPicker
                                  ColorFormat format,
                                  ITextBuffer buffer,
                                  ITrackingSpan trackingSpan,
-                                 string functionToken = null)
+                                 string functionToken = null,
+                                 ITextUndoHistory undoHistory = null)
         {
             _buffer = buffer;
             _trackingSpan = trackingSpan;
             _colorFormat = format;
             _funcToken = functionToken;
+
+            _undoHistory = undoHistory;
+
+            if (_undoHistory != null)
+                _undoTx = _undoHistory.CreateTransaction("Color change");
 
             Loaded += (sa, e) =>
             {
@@ -182,6 +191,17 @@ namespace EasyColorPicker
         private void OnWindowClosing(object sender, CancelEventArgs e)
         {
             _isClosing = true;
+
+            try
+            {
+                if (_undoTx != null)
+                {
+                    _undoTx.Complete();
+                    _undoTx.Dispose();
+                    _undoTx = null;
+                }
+            }
+            catch { }
         }
 
         private void OnWindowDeactivated(object sender, EventArgs e)
