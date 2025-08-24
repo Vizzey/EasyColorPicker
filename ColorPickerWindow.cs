@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Operations;
+using System.Windows.Threading;
 
 namespace EasyColorPicker
 {
@@ -16,6 +17,11 @@ namespace EasyColorPicker
         private readonly ColorFormat _colorFormat;
         private readonly ITextUndoHistory _undoHistory;
         private ITextUndoTransaction _undoTx;
+        private readonly object _editTag = new object();
+
+        private readonly DispatcherTimer _flushTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        private bool _flushPending;
+        private string _pendingReplacement;
 
         private ColorGradientSquare _colorSquare;
         private VerticalHueBar _hueBar;
@@ -46,6 +52,8 @@ namespace EasyColorPicker
 
             if (_undoHistory != null)
                 _undoTx = _undoHistory.CreateTransaction("Color change");
+
+            _flushTimer.Tick += (_, __) => FlushPending();
 
             Loaded += (sa, e) =>
             {
@@ -195,6 +203,9 @@ namespace EasyColorPicker
 
             try
             {
+                FlushPending();
+                _flushTimer.Stop();
+
                 if (_undoTx != null)
                 {
                     _undoTx.Complete();
@@ -288,18 +299,37 @@ namespace EasyColorPicker
             var currentColor = Color.FromArgb(a, r, g, b);
             _preview.Background = new SolidColorBrush(currentColor);
 
-            string replacement = BuildColorString(r, g, b, a, useAlpha);
-            var snap = _buffer.CurrentSnapshot;
-            var replaceSpan = _trackingSpan.GetSpan(snap);
-            using (var edit = _buffer.CreateEdit())
-            {
-                edit.Replace(replaceSpan.Start, replaceSpan.Length, replacement);
-                edit.Apply();
-            }
+            _pendingReplacement = BuildColorString(r, g, b, a, useAlpha);
+            _flushPending = true;
+            if (!_flushTimer.IsEnabled)
+                _flushTimer.Start();
 
             UpdateAlphaVisibility();
 
             _suppressEvents = false;
+        }
+
+        private void FlushPending()
+        {
+            if (!_flushPending) return;
+
+            var snap = _buffer.CurrentSnapshot;
+            var replaceSpan = _trackingSpan.GetSpan(snap);
+
+            var currentText = replaceSpan.GetText();
+            if (string.Equals(currentText, _pendingReplacement, StringComparison.Ordinal))
+            {
+                _flushPending = false;
+                return;
+            }
+
+            using (var edit = _buffer.CreateEdit(EditOptions.None, null, _editTag))
+            {
+                edit.Replace(replaceSpan.Start, replaceSpan.Length, _pendingReplacement);
+                edit.Apply();
+            }
+
+            _flushPending = false;
         }
 
 
@@ -363,11 +393,17 @@ namespace EasyColorPicker
                 case ColorFormat.Hex3:
                 case ColorFormat.Hex6:
                     return useAlpha
-                        ? $"{rgbaTok}({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})"
+                        //? $"{rgbaTok}({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})"
+                        ? $"#{r:X2}{g:X2}{b:X2}{a:X2}" // И тут тоже поменял
                         : $"#{r:X2}{g:X2}{b:X2}";
 
                 case ColorFormat.Hex8:
-                    return $"{rgbaTok}({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})";
+                    return useAlpha
+                        ? $"#{r:X2}{g:X2}{b:X2}{a:X2}"
+                        : $"#{r:X2}{g:X2}{b:X2}";
+                // Я честно хз, зачем тут rgba, если формат Hex8, если это фича, а я её дезинтегрировал, то соре :)
+                // Тот же Renpy не сжирает rbga, а вот с hex8 нормально работает
+                //return $"{rgbaTok}({r}, {g}, {b}, {alpha01.ToString(CultureInfo.InvariantCulture)})";
 
                 case ColorFormat.Rgb:
                     return useAlpha
