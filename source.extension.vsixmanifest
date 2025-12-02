@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="EasyColorPicker.02792255-b01b-4a13-a547-260c871e4e0f" Version="1.11" Language="en-US" Publisher="Vizzey" />
+        <Identity Id="EasyColorPicker.02792255-b01b-4a13-a547-260c871e4e0f" Version="1.12" Language="en-US" Publisher="Vizzey (+MaxonDev)" />
         <DisplayName>EasyColorPicker</DisplayName>
         <Description xml:space="preserve">Easy color picker for your projects. Just install it and all your hex/rgb colors will be recognized as colors.
 Write in hex format #000 or #000000 or rgb(0,0,0), rgba(0,0,0,0)

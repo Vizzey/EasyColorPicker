@@ -1,0 +1,60 @@
+Easy color picker for your projects. Just install it and all your hex/rgb colors will be recognized as colors.
+A tiny color picker for Visual Studio 2022 that detects color literals in your code and lets you edit them in place.
+
+![ezgif-1c9b4c1d97bc5f.gif](ezgif-1c9b4c1d97bc5f.gif)
+
+
+
+### What it recognizes:
+
+**#abc, #aabbcc, #aabbccdd in any case**
+
+**rgb(r, g, b) / rgba(r, g, b, a) in any case**
+
+**WinAPI macro RGB(r, g, b) (C/C++)**
+
+
+
+# How to use
+
+1. Open a file that contains any of the literals above (or write, for example #000).
+2. A small color square appears right before each color. Click the square.
+3. In the picker window:
+
+- Left panel: big gradient square to pick saturation/brightness.
+- Narrow vertical bar: hue selector.
+- Right panel: R, G, B sliders and an A (alpha) slider.
+- “Transparent Channel” checkbox toggles alpha on/off.
+
+
+### Live editing
+
+As you drag or move sliders, the color in your code is updated immediately.
+The original function name and casing are preserved:
+
+- rgb ↔ rgba (lowercase stays lowercase)
+- RGB ↔ RGBA (uppercase stays uppercase)
+- Checking “Transparent Channel” converts rgb→rgba and RGB→RGBA.
+- Unchecking converts back to rgb/RGB.
+- For hex (#RRGGBB), turning on transparency writes rgba(...).
+- <#AARRGGBB> is treated as rgba(...).
+
+
+### Alpha rules
+
+- A slider is shown only when “Transparent Channel” is on.
+- Alpha is written as 0–1 with two decimals (e.g., 0.25, 1).
+
+
+
+### Window behavior
+
+- Opens near your cursor.
+- Closes when it loses focus (click outside). Reopen by clicking the square again.
+
+
+
+### Tips
+
+- If you don’t see the square, ensure the text literally matches one of the supported formats.
+- For C/C++ WinAPI, start with RGB(...). Turning on transparency will switch to RGBA(...) automatically.
